@@ -16,7 +16,7 @@ process FEATURECOUNTS {
 
     script:
     def paired_opts = params.single_end ? "" : "-p --countReadPairs"
-
+    def group_feature = params.fc_group_features ?: 'gene_id'
     """
     featureCounts \
         ${paired_opts} \

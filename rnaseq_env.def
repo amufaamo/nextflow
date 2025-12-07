@@ -1,0 +1,38 @@
+Bootstrap: docker
+From: condaforge/miniforge3
+# ↑ Conda/Mambaが使える軽量なベースイメージを使います
+
+%labels
+    Author Masakazu
+    Version 1.0.0
+    Description RNA-Seq Pipeline Container (fastp, STAR, featureCounts)
+
+%post
+    # チャンネルの設定
+    conda config --add channels defaults
+    conda config --add channels bioconda
+    conda config --add channels conda-forge
+
+    # ツールのインストール
+    # Masakazuさんのローカル環境と同じバージョンを指定します
+    # featureCountsは "subread" パッケージに含まれています
+    mamba install -y \
+        fastp=0.23.2 \
+        star=2.7.10b \
+        subread=2.0.6
+    
+    # メモ: subread(featureCounts)の2.1.0はBiocondaで利用できない場合があるため、
+    # 非常に近い安定版の2.0.6を指定しています。機能差はほとんどありません。
+
+    # キャッシュの削除（イメージサイズ削減）
+    mamba clean --all -y
+
+%environment
+    # コンテナ実行時の環境変数設定
+    export LC_ALL=C
+
+%test
+    # ビルド後に正しくインストールされたか確認
+    fastp --version
+    STAR --version
+    featureCounts -v

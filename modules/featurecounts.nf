@@ -16,12 +16,15 @@ process FEATURECOUNTS {
 
     script:
     def paired_opts = params.single_end ? "" : "-p --countReadPairs"
+    
+    // もしパラメータが空なら 'gene_id' を代入する変数を作る
     def group_feature = params.fc_group_features ?: 'gene_id'
+
     """
     featureCounts \
         ${paired_opts} \
         -t exon \
-        -g ${params.fc_group_features} \
+        -g ${group_feature} \
         -a ${gtf} \
         -o ${sample_id}_featurecounts.txt \
         -T ${task.cpus} \

@@ -1,27 +1,27 @@
 process TRINITY {
-    // Trinityはメモリを大量に消費するため、必要に応じて調整してください
-    container 'quay.io/biocontainers/trinity:2.15.1--h9f5acd7_0'
+    // ★修正: 確実に存在する安定版(2.14.0)に変更
+    container 'trinityrnaseq/trinityrnaseq:2.14.0'
     
-    publishDir "${params.outdir}/trinity", mode: 'copy'
+    publishDir "${params.outdir}/trinity", mode: 'copy', overwrite: true
+    
+    // マシンスペックに合わせてメモリ最大化
     cpus params.cpus 
-    // Trinityには多めのメモリ推奨 (例: 32GB以上)
-    memory '32 GB' 
+    memory '200 GB' 
 
     input:
-    path reads_r1 // 全サンプルのRead1のリスト
-    path reads_r2 // 全サンプルのRead2のリスト (Singleの場合は空)
+    path reads_r1 
+    path reads_r2 
 
     output:
     path "trinity_out_dir/Trinity.fasta", emit: fasta
     path "trinity_out_dir/Trinity.fasta.gene_trans_map", emit: map
 
     script:
-    // ファイルリストをカンマ区切り文字列に変換
     def left_reads  = reads_r1.join(',')
     def right_reads = reads_r2.join(',')
     
     def seqType = "fq"
-    def max_memory = "30G" // コンテナ内の制限用
+    def max_memory = "180G" 
 
     if (params.single_end) {
         """

@@ -92,3 +92,38 @@ rnaseq/
 
   * **Memory Usage**: De novo assembly (Trinity) requires a significant amount of RAM. We recommend using a machine with at least **200GB** of memory.
   * **Cache**: The first execution may take some time to download the necessary container images.
+
+## ⚙️ Arguments
+
+### Input / Output
+| Parameter | Description | Default | Required |
+|-----------|-------------|:-------:|:--------:|
+| `--samplesheet` | Path to the input sample sheet (CSV). Columns `sample`, `fastq_1`, `fastq_2` are required. | `./samples.csv` | **Yes** |
+| `--fastq_dir` | Directory path containing the raw FASTQ files. | `~/fastq` | No |
+| `--outdir` | Directory path where results will be saved. | `results` | No |
+
+### Mode & Reads
+| Parameter | Description | Default |
+|-----------|-------------|:-------:|
+| `--denovo` | Set to `true` to run the **De novo assembly** pipeline (Trinity). If `false`, runs Reference-based (STAR). | `false` |
+| `--single_end` | Set to `true` for single-end reads. Default is paired-end. | `false` |
+
+### Reference-based Analysis (only when `--denovo false`)
+| Parameter | Description | Default | Required |
+|-----------|-------------|:-------:|:--------:|
+| `--ref_gtf` | Path to the GTF annotation file. | `null` | **Yes** |
+| `--ref_fasta` | Path to the reference genome FASTA file. | `null` | **Yes** |
+| `--star_index` | Path to a pre-built STAR index directory. If provided, index building is skipped. | `null` | No |
+| `--fc_group_features` | The feature attribute used by featureCounts (e.g., `gene_id`, `gene_name`, `gene`). | `gene_id` | No |
+
+### De novo Analysis (only when `--denovo true`)
+| Parameter | Description | Default | Required |
+|-----------|-------------|:-------:|:--------:|
+| `--busco_lineage` | Lineage dataset for BUSCO assessment (e.g., `vertebrata_odb10`, `mammalia_odb10`). | `eukaryota_odb10` | **Yes** |
+| `--busco_download_path` | Directory to store downloaded BUSCO datasets. | `./busco_downloads` | No |
+
+### System & Adapters
+| Parameter | Description | Default |
+|-----------|-------------|:-------:|
+| `--cpus` | Number of CPUs to use for multi-threaded processes (STAR, Trinity, etc.). | `8` |
+| `--adapter_fasta` | Path to the adapter FASTA file for trimming (if needed). | `~/fasta/adapter.fasta` |

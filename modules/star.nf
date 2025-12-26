@@ -1,6 +1,6 @@
 process STAR_INDEX {
     // STAR container definition
-    container 'quay.io/biocontainers/star:2.7.10b--h6b7c446_1'
+    container 'quay.io/biocontainers/star:2.7.11b--h5ca1c30_8'
 
     publishDir "${params.star_index_dir}", mode: 'copy', overwrite: false
     cpus params.cpus
@@ -26,8 +26,8 @@ process STAR_INDEX {
 
 process STAR_ALIGN {
     tag "$sample_id"
-    // STAR container definition
-    container 'quay.io/biocontainers/star:2.7.10b--h6b7c446_1'
+    // ★修正1: バージョンを STAR_INDEX と同じ 2.7.11b に統一しました
+    container 'quay.io/biocontainers/star:2.7.11b--h5ca1c30_8'
 
     publishDir "${params.outdir}/star/${sample_id}", mode: 'copy'
     cpus params.cpus
@@ -43,6 +43,9 @@ process STAR_ALIGN {
 
     script:
     def input_reads = reads.join(' ')
+    // ★修正2: パラメータ(例: "30.GB")をバイト数に変換する魔法の呪文です
+    def sort_ram = nextflow.util.MemoryUnit.of("${params.star_bam_sort_ram}").toBytes()
+
     """
     STAR --genomeDir ${index} \
         --readFilesIn ${input_reads} \
@@ -50,7 +53,8 @@ process STAR_ALIGN {
         --readFilesCommand zcat \
         --outFileNamePrefix ${sample_id}_ \
         --sjdbGTFfile ${gtf} \
-        --outSAMtype BAM SortedByCoordinate
+        --outSAMtype BAM SortedByCoordinate \
+        --limitBAMsortRAM ${sort_ram}
     
     mv ${sample_id}_Aligned.sortedByCoord.out.bam ${sample_id}.bam
     """

@@ -1,7 +1,8 @@
 process FASTP {
     tag "$sample_id"
     // Fastp container definition
-    container 'quay.io/biocontainers/fastp:0.23.4--h5f740d0_0'
+    container 'quay.io/biocontainers/fastp:1.0.1--heae3180_0'
+    
     
     publishDir "${params.outdir}/fastp/${sample_id}", mode: 'copy'
     cpus params.cpus

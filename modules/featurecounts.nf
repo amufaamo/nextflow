@@ -1,7 +1,7 @@
 process FEATURECOUNTS {
     tag "$sample_id"
     // Subread container definition
-    container 'quay.io/biocontainers/subread:2.0.1--h5bf99c6_1'
+    container 'quay.io/biocontainers/subread:2.1.1--h577a1d6_0'
 
     publishDir "${params.outdir}/featurecounts", mode: 'copy'
     cpus params.cpus

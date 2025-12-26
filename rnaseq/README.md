@@ -41,6 +41,7 @@ nextflow run rnaseq/main.nf \
     --outdir results_ref \
     --ref_gtf /path/to/genes.gtf \
     --ref_fasta /path/to/genome.fa \
+    --star_bam_sort_ram 30.GB \
     --cpus 16
 
 ```
@@ -50,6 +51,7 @@ nextflow run rnaseq/main.nf \
 * `--single_end`: Add this flag for single-end reads (default is paired-end).
 * `--fc_group_features`: The attribute type used by featureCounts (default: `gene_id`).
 * `--star_index_nbases`: **Important for small genomes!** Set to `11` for bacteria/yeast (default: `14` for Mouse/Human).
+* `--star_bam_sort_ram`: Adjust this if you encounter memory errors during BAM sorting (default: `30.GB`).
 
 ---
 
@@ -96,7 +98,8 @@ rnaseq/
 
 ## ⚠️ Notes
 
-* **Memory Usage**: De novo assembly (Trinity) requires a significant amount of RAM. We recommend using a machine with at least **200GB** of memory.
+* **Memory Usage (De novo)**: Trinity requires a significant amount of RAM. We recommend using a machine with at least **200GB** of memory.
+* **Memory Usage (STAR)**: STAR alignment requires memory for both the **Genome Index** (~30GB for Human/Mouse) and **BAM Sorting** (configurable via `--star_bam_sort_ram`, default 30GB). Ensure your system has `Index Size + Sort RAM` available (e.g., 64GB+ recommended).
 * **Cache**: The first execution may take some time to download the necessary container images.
 
 ## ⚙️ Arguments
@@ -124,6 +127,7 @@ rnaseq/
 | `--ref_fasta` | Path to the reference genome FASTA file. | `null` | **Yes** |
 | `--star_index` | Path to a pre-built STAR index directory. If provided, index building is skipped. | `null` | No |
 | `--star_index_nbases` | The `genomeSAindexNbases` parameter for STAR. **Use 11 for small genomes (Bacteria/Yeast).** | `14` | No |
+| `--star_bam_sort_ram` | Memory limit for STAR BAM sorting buffer. Format with unit (e.g., `10.GB`, `60.GB`). | `30.GB` | No |
 | `--fc_group_features` | The feature attribute used by featureCounts (e.g., `gene_id`, `gene_name`, `gene`). | `gene_id` | No |
 
 ### De novo Analysis (only when `--denovo true`)
@@ -139,7 +143,5 @@ rnaseq/
 | --- | --- | --- |
 | `--cpus` | Number of CPUs to use for multi-threaded processes (STAR, Trinity, etc.). | `8` |
 | `--adapter_fasta` | Path to the adapter FASTA file for trimming (if needed). | `~/fasta/adapter.fasta` |
-
-```
 
 ```

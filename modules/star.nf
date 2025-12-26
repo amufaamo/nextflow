@@ -19,7 +19,8 @@ process STAR_INDEX {
         --genomeDir index \
         --genomeFastaFiles ${fasta} \
         --sjdbGTFfile ${gtf} \
-        --runThreadN ${task.cpus}
+        --runThreadN ${task.cpus} \
+        --genomeSAindexNbases ${params.star_index_nbases}
     """
 }
 

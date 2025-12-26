@@ -1,10 +1,8 @@
 process TRINITY {
-    // ★修正: 確実に存在する安定版(2.14.0)に変更
     container 'trinityrnaseq/trinityrnaseq:2.14.0'
     
     publishDir "${params.outdir}/trinity", mode: 'copy', overwrite: true
     
-    // マシンスペックに合わせてメモリ最大化
     cpus params.cpus 
     memory '200 GB' 
 
@@ -13,8 +11,9 @@ process TRINITY {
     path reads_r2 
 
     output:
-    path "trinity_out_dir/Trinity.fasta", emit: fasta
-    path "trinity_out_dir/Trinity.fasta.gene_trans_map", emit: map
+    // リネーム後の標準的なファイル名で出力します
+    path "Trinity.fasta", emit: fasta
+    path "Trinity.fasta.gene_trans_map", emit: map
 
     script:
     def left_reads  = reads_r1.join(',')
@@ -23,6 +22,7 @@ process TRINITY {
     def seqType = "fq"
     def max_memory = "180G" 
 
+    // コマンド実行後に mv コマンドでファイル名を整形します
     if (params.single_end) {
         """
         Trinity --seqType ${seqType} \
@@ -31,6 +31,9 @@ process TRINITY {
             --CPU ${task.cpus} \
             --output trinity_out_dir \
             --full_cleanup
+        
+        mv trinity_out_dir.Trinity.fasta Trinity.fasta
+        mv trinity_out_dir.Trinity.fasta.gene_trans_map Trinity.fasta.gene_trans_map
         """
     } else {
         """
@@ -41,6 +44,9 @@ process TRINITY {
             --CPU ${task.cpus} \
             --output trinity_out_dir \
             --full_cleanup
+
+        mv trinity_out_dir.Trinity.fasta Trinity.fasta
+        mv trinity_out_dir.Trinity.fasta.gene_trans_map Trinity.fasta.gene_trans_map
         """
     }
 }

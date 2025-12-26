@@ -6,25 +6,20 @@ process BUSCO {
 
     input:
     path fasta
-    val lineage // "mammalia_odb10", "eukaryota_odb10" など
+    val lineage // "mammalia_odb10", "vertebrata_odb10" など
 
     output:
     path "busco_output", emit: dir
     path "busco_output/short_summary.*.txt", emit: summary
 
     script:
+    // ★修正: --offline を削除しました
     """
     busco -i ${fasta} \
           -l ${lineage} \
           -o busco_output \
           -m transcriptome \
           -c ${task.cpus} \
-          --offline \
-          --download_path ${params.busco_download_path} 
-    
-    # 注: 初回実行時にデータセットがない場合、--offlineを外すか
-    # 事前にダウンロードしておく必要があります。
-    # 今回はシンプルにするため自動ダウンロードを許可する設定にします:
-    # busco -i ${fasta} -l ${lineage} -o busco_output -m transcriptome -c ${task.cpus}
+          --download_path ${params.busco_download_path}
     """
 }

@@ -1,6 +1,6 @@
 process FEATURECOUNTS {
     tag "$sample_id"
-    // Subread container definition
+    // Subread container definition (v2.1.1 なので --countReadPairs が使えます)
     container 'quay.io/biocontainers/subread:2.1.1--h577a1d6_0'
 
     publishDir "${params.outdir}/featurecounts", mode: 'copy'
@@ -17,13 +17,16 @@ process FEATURECOUNTS {
     script:
     def paired_opts = params.single_end ? "" : "-p --countReadPairs"
     
-    // もしパラメータが空なら 'gene_id' を代入する変数を作る
+    // パラメータのデフォルト値処理
     def group_feature = params.fc_group_features ?: 'gene_id'
+    
+    // ★ここが修正ポイント！ configで定義したパラメータを使います
+    def feature_type = params.gtf_feature_type ?: 'exon'
 
     """
     featureCounts \
         ${paired_opts} \
-        -t exon \
+        -t ${feature_type} \
         -g ${group_feature} \
         -a ${gtf} \
         -o ${sample_id}_featurecounts.txt \

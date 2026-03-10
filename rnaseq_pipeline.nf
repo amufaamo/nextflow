@@ -31,7 +31,7 @@ params.cpus        = 8
 params.fastp_path         = 'fastp'
 params.star_path          = 'STAR'
 params.featurecounts_path = 'featureCounts'
-params.falco_path         = 'falco'
+params.falco_path         = '/home/masakazu/miniconda3/envs/falco/bin/falco'
 params.adapter_fasta      = "${System.getProperty("user.home")}/fasta/adapter.fasta" 
 params.star_index_dir     = "./star_index_new" // 新規作成時の保存先名
 

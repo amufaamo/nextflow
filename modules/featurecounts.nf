@@ -12,7 +12,7 @@ process FEATURECOUNTS {
 
     output:
     path "${sample_id}_featurecounts.txt"
-    path "${sample_id}_featurecounts.txt.summary"
+    path "${sample_id}_featurecounts.txt.summary", emit: summary
 
     script:
     def paired_opts = params.single_end ? "" : "-p --countReadPairs"

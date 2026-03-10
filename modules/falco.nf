@@ -1,7 +1,7 @@
 process FALCO_PRE {
     tag "${sample_id}"
     // FastQC/Falco用コンテナ
-    container 'quay.io/biocontainers/falco:1.2.1--hec16e2b_1'
+    container 'quay.io/biocontainers/falco:1.2.5--h077b44d_0'
     publishDir "${params.outdir}/falco_pre/${sample_id}", mode: 'copy'
     cpus params.cpus
 
@@ -35,7 +35,7 @@ process FALCO_PRE {
 process FALCO_POST {
     tag "${sample_id}"
     // FastQC/Falco用コンテナ
-    container 'quay.io/biocontainers/falco:1.2.1--hec16e2b_1'
+    container 'quay.io/biocontainers/falco:1.2.5--h077b44d_0'
     publishDir "${params.outdir}/falco_post/${sample_id}", mode: 'copy'
     cpus params.cpus
 

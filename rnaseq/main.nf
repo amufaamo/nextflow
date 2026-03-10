@@ -30,7 +30,9 @@ if (workflow.profile == 'standard' || workflow.profile == 'apptainer' || workflo
 }
 
 // --- モジュールのインポート ---
+include { FALCO_PRE; FALCO_POST } from '../modules/falco.nf'
 include { FASTP } from '../modules/fastp.nf'
+include { SUMMARY } from '../modules/summary.nf'
 include { STAR_INDEX; STAR_ALIGN } from '../modules/star.nf'
 include { FEATURECOUNTS } from '../modules/featurecounts.nf'
 include { TRINITY } from '../modules/trinity.nf'
@@ -95,8 +97,14 @@ workflow {
         }
         .set { ch_reads }
 
-    // 2. QC & Trimming
+    // 2. フィルタリング前の QC (Falco)
+    FALCO_PRE( ch_reads )
+
+    // 3. QC & Trimming (fastp)
     FASTP( ch_reads )
+
+    // 4. フィルタリング後の QC (Falco)
+    FALCO_POST( FASTP.out.reads )
 
     if (params.denovo) {
         // ==========================================
@@ -139,6 +147,7 @@ workflow {
         // ==========================================
         
         // 🔴 【定量・クラスタリングルート】
+        // 定量ルートでは、TranscriptレベルのFASTA（ Trinityの出力 ）を使います
         SALMON_INDEX( TRINITY.out.fasta )
         SALMON_QUANT( FASTP.out.reads, SALMON_INDEX.out.index )
         
@@ -178,5 +187,14 @@ workflow {
         }
         STAR_ALIGN( FASTP.out.reads, ch_index, params.ref_gtf )
         FEATURECOUNTS( STAR_ALIGN.out.bam, params.ref_gtf )
+
+        // Summary出力
+        ch_falco_pre  = FALCO_PRE.out.txt.collect()
+        ch_falco_post = FALCO_POST.out.txt.collect()
+        ch_fastp      = FASTP.out.json.collect()
+        ch_star       = STAR_ALIGN.out.log.collect()
+        ch_fc         = FEATURECOUNTS.out.summary.collect()
+        
+        SUMMARY( ch_falco_pre, ch_falco_post, ch_fastp, ch_star, ch_fc )
     }
 }

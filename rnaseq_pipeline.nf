@@ -31,6 +31,7 @@ params.cpus        = 8
 params.fastp_path         = 'fastp'
 params.star_path          = 'STAR'
 params.featurecounts_path = 'featureCounts'
+params.falco_path         = 'falco'
 params.adapter_fasta      = "${System.getProperty("user.home")}/fasta/adapter.fasta" 
 params.star_index_dir     = "./star_index_new" // 新規作成時の保存先名
 
@@ -52,6 +53,7 @@ def get_version(cmd_path, version_flag) {
 def ver_fastp = get_version(params.fastp_path, "--version")
 def ver_star  = get_version(params.star_path, "--version")
 def ver_fc    = get_version(params.featurecounts_path, "-v")
+def ver_falco = get_version(params.falco_path, "-v")
 
 
 // --- 入力チェック ---
@@ -82,6 +84,7 @@ log.info """
           STAR Index    : ${params.star_index ?: "Create in: " + params.star_index_dir}
           
           [ Tools Versions ]
+          falco         : ${ver_falco}
           fastp         : ${ver_fastp}
           STAR          : ${ver_star}
           featureCounts : ${ver_fc}
@@ -109,10 +112,16 @@ workflow {
         }
         .set { ch_reads }
 
-    // 2. FASTP実行
+    // 2. フィルタリング前のQC (Falco)
+    FALCO_PRE( ch_reads )
+
+    // 3. FASTP実行
     FASTP( ch_reads )
 
-    // 3. インデックスの準備（ロジック強化）
+    // 4. フィルタリング後のQC (Falco)
+    FALCO_POST( FASTP.out.reads )
+
+    // 5. インデックスの準備（ロジック強化）
     def ch_index
     if (params.star_index) {
         // 既存インデックスを使う
@@ -123,13 +132,22 @@ workflow {
         ch_index = STAR_INDEX.out.index
     }
 
-    // 4. STARアライメント
+    // 6. STARアライメント
     // GTFをここでも渡すことで、ncRNA等のスプライシング精度を向上させます
     STAR_ALIGN( FASTP.out.reads, ch_index, params.ref_gtf )
 
-    // 5. カウント処理
+    // 7. カウント処理
     // GTFに含まれるすべての遺伝子タイプ（protein_coding, lncRNA, miRNA等）をカウント
     FEATURECOUNTS( STAR_ALIGN.out.bam, params.ref_gtf )
+
+    // 8. ログのサマリー作成（TSVに集計）
+    ch_falco_pre  = FALCO_PRE.out.txt.collect()
+    ch_falco_post = FALCO_POST.out.txt.collect()
+    ch_fastp      = FASTP.out.json.collect()
+    ch_star       = STAR_ALIGN.out.log.collect()
+    ch_fc         = FEATURECOUNTS.out.summary.collect()
+
+    SUMMARY( ch_falco_pre, ch_falco_post, ch_fastp, ch_star, ch_fc )
 }
 
 /*
@@ -137,6 +155,54 @@ workflow {
  * プロセス定義
  * ================================================================================================
  */
+
+process FALCO_PRE {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/falco_pre/${sample_id}", mode: 'copy'
+    cpus params.cpus
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    path "*_report.html", emit: html
+    path "*_data.txt", emit: txt
+
+    script:
+    """
+    ${params.falco_path} --outdir . -t ${task.cpus} ${reads[0]}
+    mv fastqc_report.html ${sample_id}_R1_pre_report.html
+    mv fastqc_data.txt ${sample_id}_R1_pre_data.txt
+
+    ${params.falco_path} --outdir . -t ${task.cpus} ${reads[1]}
+    mv fastqc_report.html ${sample_id}_R2_pre_report.html
+    mv fastqc_data.txt ${sample_id}_R2_pre_data.txt
+    """
+}
+
+process FALCO_POST {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/falco_post/${sample_id}", mode: 'copy'
+    cpus params.cpus
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    path "*_report.html", emit: html
+    path "*_data.txt", emit: txt
+
+    script:
+    """
+    ${params.falco_path} --outdir . -t ${task.cpus} ${reads[0]}
+    mv fastqc_report.html ${sample_id}_R1_post_report.html
+    mv fastqc_data.txt ${sample_id}_R1_post_data.txt
+
+    ${params.falco_path} --outdir . -t ${task.cpus} ${reads[1]}
+    mv fastqc_report.html ${sample_id}_R2_post_report.html
+    mv fastqc_data.txt ${sample_id}_R2_post_data.txt
+    """
+}
 
 process FASTP {
     publishDir "${params.outdir}/fastp/${sample_id}", mode: 'copy'
@@ -230,7 +296,7 @@ process FEATURECOUNTS {
 
     output:
     path "${sample_id}_featurecounts.txt"
-    path "${sample_id}_featurecounts.txt.summary"
+    path "${sample_id}_featurecounts.txt.summary", emit: summary
 
     script:
     // -t exon -g gene_id はデフォルトですが、ncRNAもしっかり拾います
@@ -244,5 +310,84 @@ process FEATURECOUNTS {
         -o ${sample_id}_featurecounts.txt \\
         -T ${task.cpus} \\
         ${bam}
+    """
+}
+
+process SUMMARY {
+    publishDir "${params.outdir}/summary", mode: 'copy'
+
+    input:
+    path falco_pre_txt
+    path falco_post_txt
+    path fastp_json
+    path star_logs
+    path fc_summaries
+
+    output:
+    path "summary.tsv"
+
+    script:
+    """
+    #!/usr/bin/env python3
+    import glob
+    
+    data = {}
+    samples = set()
+    TAB = chr(9)
+    NL = chr(10)
+    
+    def add_metric(sample, metric, value):
+        if sample not in data:
+            data[sample] = {}
+        data[sample][metric] = value
+        samples.add(sample)
+    
+    for f in glob.glob("*_R1_pre_data.txt"):
+        sample = f.replace("_R1_pre_data.txt", "")
+        with open(f) as fh:
+            for line in fh:
+                if line.startswith("Total Sequences"):
+                    add_metric(sample, "1_Falco_Pre_Total_Seq", line.strip().split(TAB)[1])
+                elif line.startswith("%GC"):
+                    add_metric(sample, "1_Falco_Pre_GC_Percent", line.strip().split(TAB)[1])
+    
+    for f in glob.glob("*_R1_post_data.txt"):
+        sample = f.replace("_R1_post_data.txt", "")
+        with open(f) as fh:
+            for line in fh:
+                if line.startswith("Total Sequences"):
+                    add_metric(sample, "2_Falco_Post_Total_Seq", line.strip().split(TAB)[1])
+                elif line.startswith("%GC"):
+                    add_metric(sample, "2_Falco_Post_GC_Percent", line.strip().split(TAB)[1])
+    
+    for f in glob.glob("*_Log.final.out"):
+        sample = f.replace("_Log.final.out", "")
+        with open(f) as fh:
+            for line in fh:
+                if "Number of input reads" in line:
+                    add_metric(sample, "3_STAR_Input_Reads", line.split("|")[1].strip())
+                elif "Uniquely mapped reads number" in line:
+                    add_metric(sample, "3_STAR_Uniquely_Mapped", line.split("|")[1].strip())
+                elif "Uniquely mapped reads %" in line:
+                    add_metric(sample, "3_STAR_Uniquely_Mapped_Percent", line.split("|")[1].strip())
+    
+    for f in glob.glob("*_featurecounts.txt.summary"):
+        sample = f.replace("_featurecounts.txt.summary", "")
+        with open(f) as fh:
+            for i, line in enumerate(fh):
+                if i == 0: continue
+                parts = line.strip().split(TAB)
+                if len(parts) >= 2:
+                    add_metric(sample, "4_FC_" + parts[0], parts[1])
+    
+    with open("summary.tsv", "w") as out:
+        samples = sorted(list(samples))
+        out.write("Metric" + TAB + TAB.join(samples) + NL)
+        seen_metrics = set()
+        for s in data:
+            seen_metrics.update(data[s].keys())
+        for m in sorted(list(seen_metrics)):
+            row = [m] + [str(data.get(s, {}).get(m, "NA")) for s in samples]
+            out.write(TAB.join(row) + NL)
     """
 }

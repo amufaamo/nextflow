@@ -36,11 +36,22 @@ include { FEATURECOUNTS } from '../modules/featurecounts.nf'
 include { TRINITY } from '../modules/trinity.nf'
 include { BUSCO } from '../modules/busco.nf'
 include { SALMON_INDEX; SALMON_QUANT } from '../modules/salmon.nf'
+include { CORSET } from '../modules/corset.nf'
+include { DESEQ2 } from '../modules/deseq2.nf'
+include { TRANSDECODER } from '../modules/transdecoder.nf'
+include { EGGNOG_MAPPER } from '../modules/eggnog.nf'
+include { DIAMOND } from '../modules/diamond.nf'
+include { INTERPROSCAN } from '../modules/interproscan.nf'
 
 // --- パラメータ設定 (configで上書きされます) ---
 params.samplesheet     = './samples.csv'
 params.outdir          = "results"
 params.denovo          = false 
+
+// --- De novo Annotation 用 データベース群 ---
+params.eggnog_db       = null
+params.nr_db           = null
+params.interpro_db     = null
 
 // --- 入力チェック ---
 if (params.denovo) {
@@ -120,10 +131,39 @@ workflow {
         // Trinity実行 (安全なリストを渡す)
         TRINITY( ch_r1_list, ch_r2_list )
         
-        // BUSCO & Salmon
+        // アセンブリの品質評価
         BUSCO( TRINITY.out.fasta, params.busco_lineage )
+        
+        // ==========================================
+        // 🔀 【分岐スタート】Nextflowが自動で同時並行で走らせます
+        // ==========================================
+        
+        // 🔴 【定量・クラスタリングルート】
         SALMON_INDEX( TRINITY.out.fasta )
         SALMON_QUANT( FASTP.out.reads, SALMON_INDEX.out.index )
+        
+        // Corsetで遺伝子レベルにクラスタリング
+        CORSET( SALMON_QUANT.out.eq_classes.collect() )
+        
+        // DESeq2による発現変動解析
+        DESEQ2( CORSET.out.counts )
+
+        // 🔵 【アノテーションルート】
+        // FASTAからペプチド(ORF)配列を抽出
+        TRANSDECODER( TRINITY.out.fasta )
+        
+        // 以下、外部DBのパスが指定されている場合のみ各アノテーションツールを実行
+        if (params.eggnog_db) {
+            EGGNOG_MAPPER( TRANSDECODER.out.pep, params.eggnog_db )
+        }
+        
+        if (params.nr_db) {
+            DIAMOND( TRANSDECODER.out.pep, params.nr_db )
+        }
+        
+        if (params.interpro_db) {
+            INTERPROSCAN( TRANSDECODER.out.pep, params.interpro_db )
+        }
 
     } else {
         // ==========================================

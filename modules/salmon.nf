@@ -29,6 +29,7 @@ process SALMON_QUANT {
 
     output:
     path "${sample_id}_quant", emit: quant_dir
+    path "${sample_id}_quant/aux_info/eq_classes.txt", emit: eq_classes
 
     script:
     if (params.single_end) {
@@ -37,6 +38,7 @@ process SALMON_QUANT {
             -r ${reads[0]} \
             -p ${task.cpus} \
             --validateMappings \
+            --dumpEq \
             -o ${sample_id}_quant
         """
     } else {
@@ -45,6 +47,7 @@ process SALMON_QUANT {
             -1 ${reads[0]} -2 ${reads[1]} \
             -p ${task.cpus} \
             --validateMappings \
+            --dumpEq \
             -o ${sample_id}_quant
         """
     }

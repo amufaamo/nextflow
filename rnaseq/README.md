@@ -79,7 +79,8 @@ nextflow run rnaseq/main.nf \
 
 **Key Options:**
 
-* `--single_end`: Add this flag for single-end reads (default is paired-end).
+* `--read_type`: Select which reads to use from the samplesheet. Options are `paired`, `read1`, or `read2` (default: `paired`).
+* `--single_end`: Add this flag for single-end reads (equivalent to `--read_type read1`, default is paired-end).
 * `--fc_group_features`: The attribute type used by featureCounts (default: `gene_id`).
 
 ### 3. De novo Analysis (De novo Assembly)
@@ -142,7 +143,8 @@ rnaseq/
 | Parameter | Description | Default |
 | --- | --- | --- |
 | `--denovo` | Set to `true` to run **De novo assembly** (Trinity). | `false` |
-| `--single_end` | Set to `true` for single-end reads. | `false` |
+| `--read_type` | Which reads to use from the samplesheet (`paired`, `read1`, `read2`). | `paired` |
+| `--single_end` | Set to `true` for single-end (equivalent to `--read_type read1`). | `false` |
 
 ### Reference-based Analysis (only when `--denovo false`)
 

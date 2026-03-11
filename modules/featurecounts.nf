@@ -15,7 +15,9 @@ process FEATURECOUNTS {
     path "${sample_id}_featurecounts.txt.summary", emit: summary
 
     script:
-    def paired_opts = params.single_end ? "" : "-p --countReadPairs"
+    // Determine if it's single-end or paired-end from parameters
+    def is_single = params.single_end || params.read_type == 'read1' || params.read_type == 'read2'
+    def paired_opts = is_single ? "" : "-p --countReadPairs"
     
     // パラメータのデフォルト値処理
     def group_feature = params.fc_group_features ?: 'gene_id'

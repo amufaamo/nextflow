@@ -18,21 +18,25 @@ process FASTP {
     script:
     def adapter_opt = params.adapter_fasta ? "--adapter_fasta ${params.adapter_fasta}" : ""
     
-    if (params.single_end) {
+    def single_end = reads instanceof Path || reads.size() == 1
+    def in_read1 = reads instanceof Path ? reads : reads[0]
+
+    if (single_end) {
         """
-        fastp -i ${reads[0]} -o ${sample_id}_trimmed.fastq.gz \
-            -h ${sample_id}.fastp.html -j ${sample_id}.fastp.json \
-            --thread ${task.cpus} \
-            --trim_poly_g --trim_poly_x \
+        fastp -i ${in_read1} -o ${sample_id}_trimmed.fastq.gz \\
+            -h ${sample_id}.fastp.html -j ${sample_id}.fastp.json \\
+            --thread ${task.cpus} \\
+            --trim_poly_g --trim_poly_x \\
             ${adapter_opt}
         """
     } else {
+        def in_read2 = reads[1]
         """
-        fastp -i ${reads[0]} -I ${reads[1]} \
-            -o ${sample_id}_Read1_trimmed.fastq.gz -O ${sample_id}_Read2_trimmed.fastq.gz \
-            -h ${sample_id}.fastp.html -j ${sample_id}.fastp.json \
-            --thread ${task.cpus} \
-            --trim_poly_g --trim_poly_x \
+        fastp -i ${in_read1} -I ${in_read2} \\
+            -o ${sample_id}_Read1_trimmed.fastq.gz -O ${sample_id}_Read2_trimmed.fastq.gz \\
+            -h ${sample_id}.fastp.html -j ${sample_id}.fastp.json \\
+            --thread ${task.cpus} \\
+            --trim_poly_g --trim_poly_x \\
             ${adapter_opt}
         """
     }

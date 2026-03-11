@@ -49,6 +49,7 @@ include { INTERPROSCAN } from '../modules/interproscan.nf'
 params.samplesheet     = './samples.csv'
 params.outdir          = "results"
 params.denovo          = false 
+params.read_type       = 'paired' // 'paired', 'read1', 'read2'
 
 // --- De novo Annotation 用 データベース群 ---
 params.eggnog_db       = null
@@ -88,8 +89,11 @@ workflow {
         .map { row ->
             def sample_id = row.sample
             def reads
-            if (params.single_end) {
+            def read_type_opt = params.read_type ?: (params.single_end ? 'read1' : 'paired')
+            if (read_type_opt == 'read1') {
                 reads = [ file("${params.fastq_dir}/${row.fastq_1}") ]
+            } else if (read_type_opt == 'read2') {
+                reads = [ file("${params.fastq_dir}/${row.fastq_2}") ]
             } else {
                 reads = [ file("${params.fastq_dir}/${row.fastq_1}"), file("${params.fastq_dir}/${row.fastq_2}") ]
             }
@@ -115,7 +119,9 @@ workflow {
         def ch_r1_list
         def ch_r2_list
 
-        if (params.single_end) {
+        def is_single = params.single_end || params.read_type == 'read1' || params.read_type == 'read2'
+
+        if (is_single) {
             // Single Endの場合
             ch_r1_list = FASTP.out.reads
                 .map { id, files -> files instanceof List ? files[0] : files }

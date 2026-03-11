@@ -23,13 +23,14 @@ process TRINITY {
     def max_memory = "180G" 
 
     // コマンド実行後に mv コマンドでファイル名を整形します
-    if (params.single_end) {
+    def is_single = right_reads == "" || params.single_end || params.read_type == 'read1' || params.read_type == 'read2'
+    if (is_single) {
         """
-        Trinity --seqType ${seqType} \
-            --max_memory ${max_memory} \
-            --single ${left_reads} \
-            --CPU ${task.cpus} \
-            --output trinity_out_dir \
+        Trinity --seqType ${seqType} \\
+            --max_memory ${max_memory} \\
+            --single ${left_reads} \\
+            --CPU ${task.cpus} \\
+            --output trinity_out_dir \\
             --full_cleanup
         
         mv trinity_out_dir.Trinity.fasta Trinity.fasta

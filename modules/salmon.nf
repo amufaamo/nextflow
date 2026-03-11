@@ -32,22 +32,26 @@ process SALMON_QUANT {
     path "${sample_id}_quant/aux_info/eq_classes.txt", emit: eq_classes
 
     script:
-    if (params.single_end) {
+    def is_single = reads instanceof Path || reads.size() == 1
+    if (is_single) {
+        def in_read1 = reads instanceof Path ? reads : reads[0]
         """
-        salmon quant -i ${index} -l A \
-            -r ${reads[0]} \
-            -p ${task.cpus} \
-            --validateMappings \
-            --dumpEq \
+        salmon quant -i ${index} -l A \\
+            -r ${in_read1} \\
+            -p ${task.cpus} \\
+            --validateMappings \\
+            --dumpEq \\
             -o ${sample_id}_quant
         """
     } else {
+        def in_read1 = reads[0]
+        def in_read2 = reads[1]
         """
-        salmon quant -i ${index} -l A \
-            -1 ${reads[0]} -2 ${reads[1]} \
-            -p ${task.cpus} \
-            --validateMappings \
-            --dumpEq \
+        salmon quant -i ${index} -l A \\
+            -1 ${in_read1} -2 ${in_read2} \\
+            -p ${task.cpus} \\
+            --validateMappings \\
+            --dumpEq \\
             -o ${sample_id}_quant
         """
     }

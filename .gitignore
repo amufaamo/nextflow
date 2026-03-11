@@ -1,3 +1,7 @@
 *.sif
-*.sif
-rnaseq_tools.sif
+.nextflow.log*
+.nextflow/
+work/
+null/
+**/apptainer_images/
+nextflow.code-workspace
